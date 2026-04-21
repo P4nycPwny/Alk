@@ -1,5 +1,4 @@
-const sdk = require('@anthropic-ai/sdk');
-const Anthropic = sdk.default || sdk.Anthropic || sdk;
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 function buildPrompt(herbs, stabilizer, coherence, conflicts) {
   const herbList = herbs.map(h => `- ${h.name} (${h.rarity}, utilizzo: ${h.use})`).join('\n');
@@ -55,27 +54,17 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Nessuna erba fornita' });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY non configurata' });
-  }
-
-  let client;
-  try {
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  } catch (err) {
-    return res.status(500).json({ error: 'Errore inizializzazione client AI: ' + err.message });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY non configurata' });
   }
 
   try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     const prompt = buildPrompt(herbs, stabilizer, coherence, conflicts || []);
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 600,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const rawText = message.content[0]?.text || '';
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text();
 
     let potion = null;
     try {
