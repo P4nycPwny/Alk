@@ -1,6 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const Anthropic = require('@anthropic-ai/sdk').default ?? require('@anthropic-ai/sdk');
 
 function buildPrompt(herbs, stabilizer, coherence, conflicts) {
   const herbList = herbs.map(h => `- ${h.name} (${h.rarity}, utilizzo: ${h.use})`).join('\n');
@@ -16,7 +14,7 @@ function buildPrompt(herbs, stabilizer, coherence, conflicts) {
     coerente:   'Genera una pozione solida, utile e affidabile. Effetti chiari e precisi, qualità alta.',
     debole:     'Genera una pozione di effetto ridotto o incompleto. Dadi ridotti rispetto alla norma, effetti parziali.',
     caotica:    'Genera una "Pozione Instabile di [nome]" con effetti imprevedibili e un effetto collaterale casuale ma non letale.',
-    pericolosa: 'Genera un "Intruglio Fallito" o "Mistura Velenosa di [nome]" che danneggia chi la beve. Effetto negativo obbligatorio. L\'icona sarà 💀.',
+    pericolosa: 'Genera un "Intruglio Fallito" o "Mistura Velenosa di [nome]" che danneggia chi la beve. Effetto negativo obbligatorio.',
   };
 
   return `Sei un alchimista esperto di Fenrhold, mondo fantasy medievale. Genera una pozione D&D 5e in base a questi ingredienti.
@@ -36,7 +34,7 @@ Rispondi SOLO con un oggetto JSON valido (nessun testo aggiuntivo, nessun backti
   "duration": "Durata dell'effetto (es. 1 ora, 10 minuti, istantaneo)",
   "rarity": "Una di: Comune / Non Comune / Raro / Molto Raro / Leggendario",
   "dc": "DC di Crafting (numero intero, es. 12)",
-  "cost": "Costo stimato in mo/ma (es. 25 mo)",
+  "cost": "Costo stimato in mo (es. 25 mo)",
   "color": "Colore esadecimale del liquido (es. #4a9e6f)",
   "flavorText": "Breve frase poetica evocativa (max 20 parole)",
   "sideEffect": "Effetto collaterale (stringa vuota se assente)",
@@ -45,7 +43,7 @@ Rispondi SOLO con un oggetto JSON valido (nessun testo aggiuntivo, nessun backti
 }`;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -54,6 +52,17 @@ export default async function handler(req, res) {
 
   if (!herbs || herbs.length === 0) {
     return res.status(400).json({ error: 'Nessuna erba fornita' });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY non configurata' });
+  }
+
+  let client;
+  try {
+    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  } catch (err) {
+    return res.status(500).json({ error: 'Errore inizializzazione client AI: ' + err.message });
   }
 
   try {
@@ -67,7 +76,6 @@ export default async function handler(req, res) {
 
     const rawText = message.content[0]?.text || '';
 
-    // 3-level parser
     let potion = null;
     try {
       potion = JSON.parse(rawText);
@@ -92,4 +100,4 @@ export default async function handler(req, res) {
     console.error(err);
     return res.status(500).json({ error: err.message || 'Errore interno' });
   }
-}
+};
