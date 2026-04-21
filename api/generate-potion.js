@@ -1,4 +1,5 @@
-const Anthropic = require('@anthropic-ai/sdk').default ?? require('@anthropic-ai/sdk');
+const sdk = require('@anthropic-ai/sdk');
+const Anthropic = sdk.default || sdk.Anthropic || sdk;
 
 function buildPrompt(herbs, stabilizer, coherence, conflicts) {
   const herbList = herbs.map(h => `- ${h.name} (${h.rarity}, utilizzo: ${h.use})`).join('\n');

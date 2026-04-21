@@ -71,7 +71,11 @@ export default function App() {
           conflicts: coherence.conflicts,
         }),
       });
-      if (!res.ok) throw new Error(`Errore ${res.status}`);
+      if (!res.ok) {
+        let msg = `Errore ${res.status}`;
+        try { const e = await res.json(); if (e.error) msg = e.error; } catch {}
+        throw new Error(msg);
+      }
       const data = await res.json();
       const parsed = data.potion ? data.potion : parsePotion(data.raw || '');
       if (!parsed) throw new Error('Risposta AI non valida');
